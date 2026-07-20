@@ -88,30 +88,53 @@ jobs:
         with:
           name: trivy-segura
           path: trivy.txt
-   zap:
-  name: DAST - OWASP ZAP
-  runs-on: ubuntu-latest
-  needs: trivy
 
-  steps:
-    - uses: actions/checkout@v4
+  zap:
 
-    - name: Construir imagen
-      run: docker build -t secure-app ./app-segura
+    runs-on: ubuntu-latest
 
-    - name: Ejecutar aplicación
-      run: |
-        mkdir -p reports
-        chmod -R 777 reports
-        docker run -d --name secure -p 5000:5000 secure-app
-        sleep 20
+    needs: trivy
 
-    - uses: zaproxy/action-baseline@v0.14.0
-      with:
-        target: "http://host.docker.internal:5000"
-        cmd_options: "-a"
-        allow_issue_writing: false
-        artifact_name: zap-report-segura
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Crear red Docker
+        run: docker network create zapnet
+
+      - name: Construir imagen
+        run: |
+          docker build \
+            -t secure-app \
+            ./app-segura
+
+      - name: Ejecutar Flask
+        run: |
+          docker run -d \
+            --network zapnet \
+            --name secure \
+            secure-app
+
+      - name: Esperar aplicación
+        run: sleep 20
+
+      - name: Ejecutar ZAP Baseline
+        run: |
+          docker run --rm \
+            --network zapnet \
+            -v ${{ github.workspace }}:/zap/wrk/:rw \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t http://secure:5000 \
+            -r zap-report.html \
+            -x zap-report.xml \
+            -J zap-report.json \
+            -a
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zap-segura
+          path: |
             zap-report.html
             zap-report.xml
             zap-report.json
