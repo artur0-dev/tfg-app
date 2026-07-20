@@ -123,13 +123,14 @@ jobs:
           docker run --rm \
             --network zapnet \
             --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp \
             -v ${{ github.workspace }}:/zap/wrk/:rw \
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
             -t http://secure:5000 \
-            -r zap-report.html \
-            -x zap-report.xml \
-            -J zap-report.json \
+            -r /zap/wrk/zap-report.html \
+            -x /zap/wrk/zap-report.xml \
+            -J /zap/wrk/zap-report.json \
             -a
 
       - name: Subir Reportes de ZAP
