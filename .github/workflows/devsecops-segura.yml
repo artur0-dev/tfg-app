@@ -1,0 +1,140 @@
+name: DevSecOps - Segura
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  bandit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar Bandit
+        run: pip install bandit
+
+      - name: Ejecutar Bandit
+        run: |
+          mkdir -p resultados
+          bandit -r app-segura -f txt -o resultados/bandit.txt || true
+          cat resultados/bandit.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bandit-segura
+          path: resultados/bandit.txt
+
+  safety:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: |
+          pip install safety
+          pip install -r app-segura/requirements.txt
+
+      - run: |
+          safety check -r app-segura/requirements.txt > safety.txt || true
+          cat safety.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: safety-segura
+          path: safety.txt
+
+  gitleaks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trivy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Build Docker
+        run: |
+          docker build \
+          -t secure-app \
+          ./app-segura
+
+      - uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: secure-app
+          format: table
+          output: trivy.txt
+          exit-code: "0"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trivy-segura
+          path: trivy.txt
+
+  zap:
+
+    runs-on: ubuntu-latest
+
+    needs: trivy
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Crear red Docker
+        run: docker network create zapnet
+
+      - name: Construir imagen
+        run: |
+          docker build \
+            -t secure-app \
+            ./app-segura
+
+      - name: Ejecutar Flask
+        run: |
+          docker run -d \
+            --network zapnet \
+            --name secure \
+            secure-app
+
+      - name: Esperar aplicación
+        run: sleep 20
+
+      - name: Ejecutar ZAP Baseline
+        run: |
+          docker run --rm \
+            --network zapnet \
+            -v ${{ github.workspace }}:/zap/wrk/:rw \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t http://secure:5000 \
+            -r zap-report.html \
+            -x zap-report.xml \
+            -J zap-report.json \
+            -a
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zap-segura
+          path: |
+            zap-report.html
+            zap-report.xml
+            zap-report.json
