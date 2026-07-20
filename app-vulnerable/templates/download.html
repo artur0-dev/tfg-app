@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>Descargar archivo</h2>
+
+<form method="POST">
+
+<input
+class="form-control"
+name="filename"
+placeholder="ejemplo.txt">
+
+<br>
+
+<button class="btn btn-secondary">
+
+Leer
+
+</button>
+
+</form>
+
+<hr>
+
+<pre>
+
+{{ content }}
+
+</pre>
+
+{% endblock %}

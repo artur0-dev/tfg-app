@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+
+  vulnerable:
+
+    build: ./app_vulnerable
+
+    container_name: vulnerable-app
+
+    ports:
+      - "5000:5000"
+
+    restart: unless-stopped
+
+
+
+  segura:
+
+    build: ./app_segura
+
+    container_name: secure-app
+
+    ports:
+      - "5001:5000"
+
+    restart: unless-stopped

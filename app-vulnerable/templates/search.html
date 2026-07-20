@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>Búsqueda</h2>
+
+<form>
+
+<input
+class="form-control"
+name="q">
+
+<br>
+
+<button class="btn btn-info">
+
+Buscar
+
+</button>
+
+</form>
+
+<hr>
+
+Has buscado:
+
+{{ query|safe }}
+
+{% endblock %}

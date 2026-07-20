@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>Bienvenido {{ user }}</h2>
+
+<hr>
+
+<div class="alert alert-warning">
+
+API KEY:
+
+<b>{{ api }}</b>
+
+</div>
+
+<div class="list-group">
+
+<a class="list-group-item" href="/ping">
+
+Ping
+
+</a>
+
+<a class="list-group-item" href="/download">
+
+Descargar
+
+</a>
+
+<a class="list-group-item" href="/profile">
+
+Perfil
+
+</a>
+
+</div>
+
+{% endblock %}

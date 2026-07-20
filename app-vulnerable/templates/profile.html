@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>Perfil</h2>
+
+<form method="POST">
+
+<label>Nueva contraseña</label>
+
+<input
+class="form-control"
+name="password">
+
+<br>
+
+<button class="btn btn-success">
+
+Generar MD5
+
+</button>
+
+</form>
+
+{% if hashed %}
+
+<hr>
+
+<div class="alert alert-danger">
+
+{{ hashed }}
+
+</div>
+
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,309 @@
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    session,
+    make_response
+)
+
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField
+from wtforms.validators import DataRequired
+
+import sqlite3
+import subprocess
+import bcrypt
+import os
+
+app = Flask(__name__)
+
+# ===========================
+# Configuración segura
+# ===========================
+
+app.secret_key = os.getenv("SECRET_KEY", "change_me")
+
+API_KEY = os.getenv("API_KEY")
+
+# ===========================
+# Base de datos
+# ===========================
+
+def get_db():
+    conn = sqlite3.connect("users.db")
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# ===========================
+# Formularios
+# ===========================
+
+class LoginForm(FlaskForm):
+
+    username = StringField(
+        "Usuario",
+        validators=[DataRequired()]
+    )
+
+    password = PasswordField(
+        "Contraseña",
+        validators=[DataRequired()]
+    )
+
+# ===========================
+# Página principal
+# ===========================
+
+@app.route("/")
+def index():
+
+    return render_template("index.html")
+
+# ===========================
+# Login seguro
+# ===========================
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+
+    form = LoginForm()
+
+    if form.validate_on_submit():
+
+        username = form.username.data
+        password = form.password.data
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "SELECT password FROM users WHERE username=?",
+            (username,)
+        )
+
+        row = cursor.fetchone()
+
+        conn.close()
+
+        if row:
+
+            stored_password = row["password"].encode()
+
+            if bcrypt.checkpw(
+                password.encode(),
+                stored_password
+            ):
+
+                session["user"] = username
+                session.permanent = True
+
+                response = make_response(
+                    redirect("/dashboard")
+                )
+
+                response.set_cookie(
+                    "sessionid",
+                    "123456",
+                    httponly=True,
+                    secure=False,
+                    samesite="Lax"
+                )
+
+                return response
+
+        return render_template(
+            "login.html",
+            form=form,
+            error="Usuario o contraseña incorrectos"
+        )
+
+    return render_template(
+        "login.html",
+        form=form
+    )
+
+# ===========================
+# Dashboard
+# ===========================
+
+@app.route("/dashboard")
+def dashboard():
+
+    if "user" not in session:
+        return redirect("/login")
+
+    return render_template(
+        "dashboard.html",
+        user=session["user"]
+    )
+
+# ===========================
+# Logout
+# ===========================
+
+@app.route("/logout")
+def logout():
+
+    session.clear()
+
+    return redirect("/")
+# ===========================
+# Ping seguro
+# ===========================
+
+@app.route("/ping", methods=["GET", "POST"])
+def ping():
+
+    result = ""
+
+    if request.method == "POST":
+
+        host = request.form["host"]
+
+        try:
+
+            result = subprocess.run(
+                ["ping", "-c", "1", host],
+                capture_output=True,
+                text=True,
+                timeout=5
+            ).stdout
+
+        except Exception as e:
+
+            result = str(e)
+
+    return render_template(
+        "ping.html",
+        result=result
+    )
+
+
+# ===========================
+# Descarga segura
+# ===========================
+
+@app.route("/download", methods=["GET", "POST"])
+def download():
+
+    content = ""
+
+    if request.method == "POST":
+
+        filename = request.form["filename"]
+
+        base_path = os.path.abspath("uploads")
+
+        requested_path = os.path.abspath(
+            os.path.join(base_path, filename)
+        )
+
+        if not requested_path.startswith(base_path):
+
+            content = "Acceso denegado."
+
+        else:
+
+            try:
+
+                with open(requested_path, "r") as f:
+
+                    content = f.read()
+
+            except Exception:
+
+                content = "El archivo no existe."
+
+    return render_template(
+        "download.html",
+        content=content
+    )
+
+
+# ===========================
+# Perfil
+# ===========================
+
+@app.route("/profile", methods=["GET", "POST"])
+def profile():
+
+    hashed = ""
+
+    if request.method == "POST":
+
+        password = request.form["password"]
+
+        hashed = bcrypt.hashpw(
+            password.encode(),
+            bcrypt.gensalt()
+        ).decode()
+
+    return render_template(
+        "profile.html",
+        hashed=hashed
+    )
+
+
+# ===========================
+# Búsqueda
+# ===========================
+
+@app.route("/search")
+def search():
+
+    query = request.args.get("q", "")
+
+    return render_template(
+        "search.html",
+        query=query
+    )
+
+
+# ===========================
+# Página 404
+# ===========================
+
+@app.errorhandler(404)
+def page_not_found(error):
+
+    return render_template("404.html"), 404
+
+
+# ===========================
+# Cabeceras de seguridad
+# ===========================
+
+@app.after_request
+def security_headers(response):
+
+    response.headers["Content-Security-Policy"] = "default-src 'self'"
+
+    response.headers["X-Frame-Options"] = "DENY"
+
+    response.headers["X-Content-Type-Options"] = "nosniff"
+
+    response.headers["Referrer-Policy"] = "strict-origin"
+
+    response.headers["Permissions-Policy"] = "geolocation=()"
+
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+
+    response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+
+    response.headers["Strict-Transport-Security"] = "max-age=31536000"
+
+    return response
+
+
+# ===========================
+# Inicio de la aplicación
+# ===========================
+
+if __name__ == "__main__":
+
+    app.run(
+        host="0.0.0.0",
+        port=5000,
+        debug=False
+    )

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>Descarga segura</h2>
+
+<form method="POST">
+
+<div class="mb-3">
+
+<label>Archivo</label>
+
+<input
+class="form-control"
+name="filename">
+
+</div>
+
+<button class="btn btn-secondary">
+
+Leer
+
+</button>
+
+</form>
+
+<hr>
+
+<pre>
+
+{{ content }}
+
+</pre>
+
+{% endblock %}

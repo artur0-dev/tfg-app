@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>Login</h2>
+
+<form method="POST">
+
+{{ form.hidden_tag() }}
+
+<div class="mb-3">
+
+<label>Usuario</label>
+
+{{ form.username(class="form-control") }}
+
+</div>
+
+<div class="mb-3">
+
+<label>Contraseña</label>
+
+{{ form.password(class="form-control") }}
+
+</div>
+
+<button class="btn btn-primary">
+
+Entrar
+
+</button>
+
+</form>
+
+{% if error %}
+
+<br>
+
+<div class="alert alert-danger">
+
+{{ error }}
+
+</div>
+
+{% endif %}
+
+{% endblock %}

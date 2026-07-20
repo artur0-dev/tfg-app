@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>Ping</h2>
+
+<form method="POST">
+
+<div class="mb-3">
+
+<label>Host</label>
+
+<input
+class="form-control"
+name="host">
+
+</div>
+
+<button class="btn btn-warning">
+
+Ejecutar
+
+</button>
+
+</form>
+
+<hr>
+
+<pre>
+
+{{ result }}
+
+</pre>
+
+{% endblock %}
