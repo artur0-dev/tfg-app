@@ -138,9 +138,6 @@ jobs:
         if: always()
         with:
           name: zap-segura
-          path: |
-            ${{ github.workspace }}/zap-report.html
-            ${{ github.workspace }}/zap-report.xml
-            ${{ github.workspace }}/zap-report.json
+          path: zap-report.*
 
 
