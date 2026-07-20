@@ -122,6 +122,7 @@ jobs:
         run: |
           docker run --rm \
             --network zapnet \
+            --user "$(id -u):$(id -g)" \
             -v ${{ github.workspace }}:/zap/wrk/:rw \
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
@@ -131,12 +132,14 @@ jobs:
             -J zap-report.json \
             -a
 
-      - uses: actions/upload-artifact@v4
+      - name: Subir Reportes de ZAP
+        uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: zap-segura
           path: |
-            zap-report.html
-            zap-report.xml
-            zap-report.json
+            ${{ github.workspace }}/zap-report.html
+            ${{ github.workspace }}/zap-report.xml
+            ${{ github.workspace }}/zap-report.json
 
 
