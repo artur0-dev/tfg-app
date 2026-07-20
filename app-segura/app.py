@@ -19,6 +19,27 @@ import os
 app = Flask(__name__)
 
 # ===========================
+# Inicialización segura del entorno
+# ===========================
+# Crea el directorio de cargas si no existe para evitar fallos de E/S
+if not os.path.exists("uploads"):
+    os.makedirs("uploads")
+
+# Asegura la existencia de la base de datos y su esquema básico en Docker
+if not os.path.exists("users.db"):
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, 
+            username TEXT UNIQUE, 
+            password TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+# ===========================
 # Configuración segura
 # ===========================
 
@@ -301,13 +322,20 @@ def search():
 
 
 # ===========================
-# Página 404
+# Manejadores de Errores Personalizados
 # ===========================
 
 @app.errorhandler(404)
 def page_not_found(error):
 
     return render_template("404.html"), 404
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    # Mitiga 'Application Error Disclosure' y 'Debug Error Messages'
+    # devolviendo una estructura HTML controlada sin volcados de pila (stack traces).
+    return render_template("500.html"), 500
 
 
 # ===========================
