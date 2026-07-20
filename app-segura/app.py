@@ -7,7 +7,7 @@ from flask import (
     make_response
 )
 
-from flask_wtf import FlaskForm
+from flask_wtf import FlaskForm, CSRFProtect
 from wtforms import StringField, PasswordField
 from wtforms.validators import DataRequired
 
@@ -25,6 +25,15 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "change_me")
 
 API_KEY = os.getenv("API_KEY")
+
+# Cookie de sesión de Flask con SameSite y Secure
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.getenv("FLASK_ENV") == "production"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+
+# Protección CSRF global para TODOS los formularios POST,
+# no solo los que usan FlaskForm explícitamente
+csrf = CSRFProtect(app)
 
 # ===========================
 # Base de datos
@@ -48,6 +57,30 @@ class LoginForm(FlaskForm):
 
     password = PasswordField(
         "Contraseña",
+        validators=[DataRequired()]
+    )
+
+
+class PingForm(FlaskForm):
+
+    host = StringField(
+        "Host",
+        validators=[DataRequired()]
+    )
+
+
+class DownloadForm(FlaskForm):
+
+    filename = StringField(
+        "Archivo",
+        validators=[DataRequired()]
+    )
+
+
+class ProfileForm(FlaskForm):
+
+    password = PasswordField(
+        "Nueva contraseña",
         validators=[DataRequired()]
     )
 
@@ -106,7 +139,7 @@ def login():
                     "sessionid",
                     "123456",
                     httponly=True,
-                    secure=False,
+                    secure=os.getenv("FLASK_ENV") == "production",
                     samesite="Lax"
                 )
 
@@ -148,6 +181,7 @@ def logout():
     session.clear()
 
     return redirect("/")
+
 # ===========================
 # Ping seguro
 # ===========================
@@ -155,11 +189,12 @@ def logout():
 @app.route("/ping", methods=["GET", "POST"])
 def ping():
 
+    form = PingForm()
     result = ""
 
-    if request.method == "POST":
+    if form.validate_on_submit():
 
-        host = request.form["host"]
+        host = form.host.data
 
         try:
 
@@ -176,6 +211,7 @@ def ping():
 
     return render_template(
         "ping.html",
+        form=form,
         result=result
     )
 
@@ -187,11 +223,12 @@ def ping():
 @app.route("/download", methods=["GET", "POST"])
 def download():
 
+    form = DownloadForm()
     content = ""
 
-    if request.method == "POST":
+    if form.validate_on_submit():
 
-        filename = request.form["filename"]
+        filename = form.filename.data
 
         base_path = os.path.abspath("uploads")
 
@@ -217,6 +254,7 @@ def download():
 
     return render_template(
         "download.html",
+        form=form,
         content=content
     )
 
@@ -228,11 +266,12 @@ def download():
 @app.route("/profile", methods=["GET", "POST"])
 def profile():
 
+    form = ProfileForm()
     hashed = ""
 
-    if request.method == "POST":
+    if form.validate_on_submit():
 
-        password = request.form["password"]
+        password = form.password.data
 
         hashed = bcrypt.hashpw(
             password.encode(),
@@ -241,6 +280,7 @@ def profile():
 
     return render_template(
         "profile.html",
+        form=form,
         hashed=hashed
     )
 
@@ -277,7 +317,11 @@ def page_not_found(error):
 @app.after_request
 def security_headers(response):
 
-    response.headers["Content-Security-Policy"] = "default-src 'self'"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "frame-ancestors 'none'; "
+        "form-action 'self'"
+    )
 
     response.headers["X-Frame-Options"] = "DENY"
 
@@ -291,7 +335,12 @@ def security_headers(response):
 
     response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
 
+    response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+
     response.headers["Strict-Transport-Security"] = "max-age=31536000"
+
+    # Ocultar la versión real del servidor
+    response.headers["Server"] = "WebServer"
 
     return response
 
