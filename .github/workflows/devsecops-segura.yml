@@ -93,6 +93,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validar secretos requeridos
+        run: |
+          if [ -z "${{ secrets.CI_SECRET_KEY }}" ]; then
+            echo "::error::El secreto CI_SECRET_KEY no está configurado en el repositorio."
+            exit 1
+          fi
+
       - name: Crear red Docker
         run: docker network create zapnet
 
@@ -130,12 +137,6 @@ jobs:
           docker logs secure
           exit 1
 
-      - name: Diagnóstico si algo falla
-        if: failure()
-        run: |
-          docker ps -a
-          docker logs secure || true
-
       - name: Ejecutar ZAP Baseline
         run: |
          docker run --rm \
@@ -150,10 +151,13 @@ jobs:
            -J zap-report.json \
            -a
 
+      - name: Logs de la aplicación (diagnóstico)
+        if: always()
+        run: docker logs secure
+
       - name: Subir Reportes de ZAP
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: zap-segura
           path: zap-report.*
-
