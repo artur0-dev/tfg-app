@@ -113,15 +113,20 @@ jobs:
 
       - name: Esperar aplicación
         run: |
-          for i in $(seq 1 15); do
-            if docker exec secure python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000')" 2>/dev/null; then
-              echo "App lista"
-              exit 0
+          ok=0
+          for i in $(seq 1 20); do
+            if docker exec secure python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/login')" 2>/dev/null; then
+              ok=$((ok+1))
+              if [ "$ok" -ge 3 ]; then
+                echo "App estable"
+                exit 0
+              fi
+            else
+              ok=0
             fi
-            echo "Esperando... intento $i"
-            sleep 2
+            sleep 1
           done
-          echo "La app no respondió a tiempo"
+          echo "La app no se estabilizó a tiempo"
           docker logs secure
           exit 1
 
