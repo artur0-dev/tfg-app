@@ -1,21 +1,12 @@
-{% extends "base.html" %}
-
-{% block content %}
-<h2>Perfil</h2>
-<form method="POST">
-    <!-- SOLUCIÓN: Agrega el tag oculto que genera el token CSRF -->
-    {{ form.hidden_tag() }}
-
-    <div class="mb-3">
-        <label>Nueva contraseña</label>
-        <input class="form-control" name="password">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>App Segura</title>
+</head>
+<body>
+    <div class="container mt-4">
+        {% block content %}{% endblock %}
     </div>
-    <button class="btn btn-success">Generar bcrypt</button>
-</form>
-{% if hashed %}
-<hr>
-<div class="alert alert-success">{{ hashed }}</div>
-{% endif %}
-{% endblock %}
-
+</body>
 </html>
