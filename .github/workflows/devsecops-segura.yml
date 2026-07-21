@@ -33,7 +33,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
@@ -64,11 +63,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   trivy:
-
     runs-on: ubuntu-latest
 
     steps:
-
       - uses: actions/checkout@v4
 
       - name: Build Docker
@@ -90,13 +87,10 @@ jobs:
           path: trivy.txt
 
   zap:
-
     runs-on: ubuntu-latest
-
     needs: trivy
 
     steps:
-
       - uses: actions/checkout@v4
 
       - name: Crear red Docker
@@ -113,10 +107,29 @@ jobs:
           docker run -d \
             --network zapnet \
             --name secure \
+            -e SECRET_KEY="${{ secrets.CI_SECRET_KEY }}" \
+            -e FLASK_ENV=production \
             secure-app
 
       - name: Esperar aplicación
-        run: sleep 20
+        run: |
+          for i in $(seq 1 15); do
+            if docker exec secure python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000')" 2>/dev/null; then
+              echo "App lista"
+              exit 0
+            fi
+            echo "Esperando... intento $i"
+            sleep 2
+          done
+          echo "La app no respondió a tiempo"
+          docker logs secure
+          exit 1
+
+      - name: Diagnóstico si algo falla
+        if: failure()
+        run: |
+          docker ps -a
+          docker logs secure || true
 
       - name: Ejecutar ZAP Baseline
         run: |
@@ -138,5 +151,4 @@ jobs:
         with:
           name: zap-segura
           path: zap-report.*
-
 
