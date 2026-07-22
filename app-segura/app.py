@@ -201,10 +201,7 @@ def ping():
             result = "Host inválido."
         else:
             try:
-                # nosec B603 - host validado contra HOST_RE (solo letras,
-                # números, puntos y guiones) y PING_PATH es una ruta
-                # absoluta resuelta al arrancar; no se usa shell=True
-                result = subprocess.run(
+                result = subprocess.run( # nosec B603
                     [PING_PATH, "-c", "1", "--", host],
                     capture_output=True,
                     text=True,
