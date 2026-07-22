@@ -88,7 +88,6 @@ jobs:
 
   zap:
     runs-on: ubuntu-latest
-    needs: trivy
 
     steps:
       - uses: actions/checkout@v4
