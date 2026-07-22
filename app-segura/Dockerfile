@@ -1,16 +1,20 @@
-FROM python:3.12-slim-bookworm
+FROM python:3.12-alpine
 
 WORKDIR /app
 
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends iputils-ping && \
-    rm -rf /var/lib/apt/lists/*
+# Dependencias del sistema:
+# - iputils: provee el binario 'ping' en Alpine
+# - build deps temporales para compilar bcrypt si no hay wheel musllinux disponible
+RUN apk add --no-cache iputils && \
+    apk add --no-cache --virtual .build-deps gcc musl-dev libffi-dev
 
 COPY requirements.txt .
 
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
+
+# Quitar las herramientas de compilación una vez instaladas las dependencias
+RUN apk del .build-deps
 
 COPY . .
 
