@@ -151,6 +151,10 @@ jobs:
            -J zap-report.json \
            -a
 
+      - name: Mostrar zap.log
+        if: always()
+        run: cat zap.log || echo "No se encontró zap.log"
+
       - name: Logs de la aplicación (diagnóstico)
         if: always()
         run: docker logs secure
@@ -160,4 +164,6 @@ jobs:
         if: always()
         with:
           name: zap-segura
-          path: zap-report.*
+          path: |
+            zap-report.*
+            zap.log
