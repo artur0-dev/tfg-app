@@ -1,7 +1,8 @@
 import re
 import os
+import shutil
 import sqlite3
-import subprocess
+import subprocess  # nosec B404 - usado únicamente con lista de args (sin shell=True) y ruta absoluta resuelta abajo
 
 from functools import wraps
 
@@ -38,6 +39,12 @@ csrf = CSRFProtect(app)
 
 # Formato válido de host para /ping (evita inyección de flags tipo "-f", "-c 100", etc.)
 HOST_RE = re.compile(r"^[a-zA-Z0-9.\-]{1,253}$")
+
+# Ruta absoluta del binario 'ping', resuelta una sola vez al arrancar
+# (evita B607: no confiar en el PATH del sistema en cada llamada)
+PING_PATH = shutil.which("ping")
+if PING_PATH is None:
+    raise RuntimeError("No se encontró el binario 'ping' en el sistema.")
 
 
 # ===========================
@@ -194,8 +201,11 @@ def ping():
             result = "Host inválido."
         else:
             try:
+                # nosec B603 - host validado contra HOST_RE (solo letras,
+                # números, puntos y guiones) y PING_PATH es una ruta
+                # absoluta resuelta al arrancar; no se usa shell=True
                 result = subprocess.run(
-                    ["ping", "-c", "1", "--", host],
+                    [PING_PATH, "-c", "1", "--", host],
                     capture_output=True,
                     text=True,
                     timeout=5
@@ -332,7 +342,7 @@ if __name__ == "__main__":
             return "WebServer"
 
     app.run(
-        host="0.0.0.0",
+        host="0.0.0.0",  # nosec B104 - necesario para exponer el contenedor Docker; solo se usa en este bloque de desarrollo/CI, producción real corre tras Gunicorn
         port=5000,
         debug=False,
         request_handler=CustomRequestHandler
