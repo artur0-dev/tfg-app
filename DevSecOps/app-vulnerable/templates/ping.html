@@ -1,32 +1,13 @@
 {% extends "base.html" %}
-
 {% block content %}
-
 <h2>Ping</h2>
-
 <form method="POST">
-
-<input
-class="form-control"
-name="host"
-placeholder="8.8.8.8">
-
-<br>
-
-<button class="btn btn-warning">
-
-Ejecutar
-
-</button>
-
+    <div class="mb-3">
+        <label>Host</label>
+        <input class="form-control" name="host">
+    </div>
+    <button class="btn btn-warning">Ejecutar</button>
 </form>
-
 <hr>
-
-<pre>
-
-{{ result }}
-
-</pre>
-
+<pre>{{ result }}</pre>
 {% endblock %}

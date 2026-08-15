@@ -1,0 +1,168 @@
+name: DevSecOps - Segura
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  bandit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar Bandit
+        run: pip install bandit
+
+      - name: Ejecutar Bandit
+        run: |
+          mkdir -p resultados
+          bandit -r app-segura -f txt -o resultados/bandit.txt || true
+          cat resultados/bandit.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bandit-segura
+          path: resultados/bandit.txt
+
+  safety:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: |
+          pip install safety
+          pip install -r app-segura/requirements.txt
+
+      - run: |
+          safety check -r app-segura/requirements.txt > safety.txt || true
+          cat safety.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: safety-segura
+          path: safety.txt
+
+  gitleaks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trivy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker
+        run: |
+          docker build \
+          -t secure-app \
+          ./app-segura
+
+      - uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: secure-app
+          format: table
+          output: trivy.txt
+          exit-code: "0"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trivy-segura
+          path: trivy.txt
+
+  zap:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validar secretos requeridos
+        run: |
+          if [ -z "${{ secrets.CI_SECRET_KEY }}" ]; then
+            echo "::error::El secreto CI_SECRET_KEY no está configurado en el repositorio."
+            exit 1
+          fi
+
+      - name: Crear red Docker
+        run: docker network create zapnet
+
+      - name: Construir imagen
+        run: |
+          docker build \
+            -t secure-app \
+            ./app-segura
+
+      - name: Ejecutar Flask
+        run: |
+          docker run -d \
+            --network zapnet \
+            --name secure \
+            -e SECRET_KEY="${{ secrets.CI_SECRET_KEY }}" \
+            -e FLASK_ENV=production \
+            secure-app
+
+      - name: Esperar aplicación
+        run: |
+          ok=0
+          for i in $(seq 1 20); do
+            if docker exec secure python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/login')" 2>/dev/null; then
+              ok=$((ok+1))
+              if [ "$ok" -ge 3 ]; then
+                echo "App estable"
+                exit 0
+              fi
+            else
+              ok=0
+            fi
+            sleep 1
+          done
+          echo "La app no se estabilizó a tiempo"
+          docker logs secure
+          exit 1
+
+      - name: Ejecutar ZAP Baseline
+        run: |
+         docker run --rm \
+           -u root \
+           --network zapnet \
+           -v ${{ github.workspace }}:/zap/wrk/:rw \
+           ghcr.io/zaproxy/zaproxy:stable \
+           zap-baseline.py \
+           -t http://secure:5000 \
+           -r zap-report.html \
+           -x zap-report.xml \
+           -J zap-report.json \
+           -a
+
+      - name: Mostrar zap.log
+        if: always()
+        run: cat zap.log || echo "No se encontró zap.log"
+
+      - name: Logs de la aplicación (diagnóstico)
+        if: always()
+        run: docker logs secure
+
+      - name: Subir Reportes de ZAP
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-segura
+          path: |
+            zap-report.*
+            zap.log

@@ -1,39 +1,18 @@
 {% extends "base.html" %}
 
 {% block content %}
-
 <h2>Perfil</h2>
-
 <form method="POST">
+    {{ form.hidden_tag() }}
 
-<div class="mb-3">
-
-<label>Nueva contraseña</label>
-
-<input
-class="form-control"
-name="password">
-
-</div>
-
-<button class="btn btn-success">
-
-Generar bcrypt
-
-</button>
-
+    <div class="mb-3">
+        <label>Nueva contraseña</label>
+        <input class="form-control" name="password">
+    </div>
+    <button class="btn btn-success">Generar bcrypt</button>
 </form>
-
 {% if hashed %}
-
 <hr>
-
-<div class="alert alert-success">
-
-{{ hashed }}
-
-</div>
-
+<div class="alert alert-success">{{ hashed }}</div>
 {% endif %}
-
 {% endblock %}
