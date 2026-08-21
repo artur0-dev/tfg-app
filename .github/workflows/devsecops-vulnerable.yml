@@ -16,7 +16,7 @@ jobs:
       - name: Ejecutar Bandit
         run: |
           mkdir resultados
-          bandit -r app-vulnerable -f txt -o resultados/bandit.txt || true
+          bandit -r DevSecOps/app-vulnerable -f txt -o resultados/bandit.txt || true
           cat resultados/bandit.txt
       - uses: actions/upload-artifact@v4
         with:
@@ -37,11 +37,11 @@ jobs:
       - name: Instalar dependencias del proyecto
         continue-on-error: true
         run: |
-          pip install -r app-vulnerable/requirements.txt
+          pip install -r DevSecOps/app-vulnerable/requirements.txt
       - name: Ejecutar Safety
         continue-on-error: true
         run: |
-          safety check -r app-vulnerable/requirements.txt > safety.txt || true
+          safety check -r DevSecOps/app-vulnerable/requirements.txt > safety.txt || true
           cat safety.txt
       - uses: actions/upload-artifact@v4
         with:
@@ -52,11 +52,16 @@ jobs:
     name: Secretos - Gitleaks
     runs-on: ubuntu-latest
     continue-on-error: true
+
     steps:
       - uses: actions/checkout@v4
-      - uses: gitleaks/gitleaks-action@v2
+
+      - name: Ejecutar Gitleaks sobre app-vulnerable
+        uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: detect --source=./app-vulnerable --verbose
 ##################################################################################
   trivy:
     name: Docker - Trivy
