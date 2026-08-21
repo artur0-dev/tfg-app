@@ -94,7 +94,7 @@ jobs:
         run: |
           docker build \
             -t vulnerable-app \
-            ./app-vulnerable
+            ./DevSecOps/app-vulnerable
       - name: Ejecutar contenedor
         run: |
           docker run -d \
