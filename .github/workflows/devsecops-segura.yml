@@ -72,7 +72,7 @@ jobs:
         run: |
           docker build \
           -t secure-app \
-          ./app-segura
+          ./DevSecOps/app-segura
 
       - uses: aquasecurity/trivy-action@master
         with:
@@ -86,28 +86,24 @@ jobs:
           name: trivy-segura
           path: trivy.txt
 
-  zap:
+  zap-secura:
+    name: DAST - OWASP ZAP Active Scan (App Segura)
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
       - name: Validar secretos requeridos
         run: |
           if [ -z "${{ secrets.CI_SECRET_KEY }}" ]; then
             echo "::error::El secreto CI_SECRET_KEY no está configurado en el repositorio."
             exit 1
           fi
-
       - name: Crear red Docker
         run: docker network create zapnet
-
       - name: Construir imagen
         run: |
           docker build \
             -t secure-app \
-            ./app-segura
-
+            ./DevSecOps/app-segura
       - name: Ejecutar Flask
         run: |
           docker run -d \
@@ -116,7 +112,6 @@ jobs:
             -e SECRET_KEY="${{ secrets.CI_SECRET_KEY }}" \
             -e FLASK_ENV=production \
             secure-app
-
       - name: Esperar aplicación
         run: |
           ok=0
@@ -135,34 +130,31 @@ jobs:
           echo "La app no se estabilizó a tiempo"
           docker logs secure
           exit 1
-
-      - name: Ejecutar ZAP Baseline
+      - name: Ejecutar ZAP Full Scan (Active)
+        continue-on-error: true
         run: |
          docker run --rm \
            -u root \
            --network zapnet \
            -v ${{ github.workspace }}:/zap/wrk/:rw \
            ghcr.io/zaproxy/zaproxy:stable \
-           zap-baseline.py \
+           zap-full-scan.py \
            -t http://secure:5000 \
-           -r zap-report.html \
-           -x zap-report.xml \
-           -J zap-report.json \
-           -a
-
+           -r zap-active-report-secura.html \
+           -x zap-active-report-secura.xml \
+           -J zap-active-report-secura.json \
+           -I
       - name: Mostrar zap.log
         if: always()
         run: cat zap.log || echo "No se encontró zap.log"
-
       - name: Logs de la aplicación (diagnóstico)
         if: always()
         run: docker logs secure
-
       - name: Subir Reportes de ZAP
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: zap-segura
+          name: zap-active-secura
           path: |
-            zap-report.*
+            zap-active-report-secura.*
             zap.log
