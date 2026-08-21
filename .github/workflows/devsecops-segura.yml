@@ -21,7 +21,7 @@ jobs:
       - name: Ejecutar Bandit
         run: |
           mkdir -p resultados
-          bandit -r app-segura -f txt -o resultados/bandit.txt || true
+          bandit -r DevSecOps/app-segura -f txt -o resultados/bandit.txt || true
           cat resultados/bandit.txt
 
       - uses: actions/upload-artifact@v4
