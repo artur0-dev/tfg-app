@@ -53,14 +53,31 @@ jobs:
           path: safety.txt
 
   gitleaks:
+    name: Secretos - Gitleaks
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Instalar Gitleaks
+        run: |
+          wget -qO- https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz \
+            | tar xz -C /usr/local/bin gitleaks
+
+      - name: Analizar app-segura
+        run: |
+          gitleaks dir ./DevSecOps/app-segura \
+            --redact \
+            --exit-code 2 \
+            --report-format sarif \
+            --report-path resultados.sarif
+
+      - name: Subir informe
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-segura
+          path: resultados.sarif
 
   trivy:
     runs-on: ubuntu-latest
