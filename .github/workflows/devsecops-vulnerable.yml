@@ -116,43 +116,47 @@ jobs:
 ##################################################################################
 
   zap:
-
-    name: DAST - OWASP ZAP
-
+    name: DAST - OWASP ZAP (Active Scan)
     runs-on: ubuntu-latest
-
     needs:
-
       - trivy
-
     steps:
-
       - uses: actions/checkout@v4
-
       - name: Construir Docker
         run: |
           docker build \
             -t vulnerable-app \
             ./app-vulnerable
-
       - name: Ejecutar contenedor
         run: |
           docker run -d \
             --name vulnerable \
             -p 5000:5000 \
             vulnerable-app
-
       - name: Esperar Flask
         run: |
-          sleep 20
-
+          ok=0
+          for i in $(seq 1 20); do
+            if curl -sf http://localhost:5000 > /dev/null; then
+              ok=$((ok+1))
+              if [ "$ok" -ge 3 ]; then
+                echo "App estable"
+                exit 0
+              fi
+            else
+              ok=0
+            fi
+            sleep 1
+          done
+          echo "La app no se estabilizó a tiempo"
+          docker logs vulnerable
+          exit 1
       - name: Comprobar aplicación
         run: |
           curl http://localhost:5000
-
-      - uses: zaproxy/action-baseline@v0.14.0
+      - uses: zaproxy/action-full-scan@v0.10.0
         with:
           target: "http://localhost:5000"
           cmd_options: "-a"
           allow_issue_writing: false
-          artifact_name: zap-report
+          artifact_name: zap-report-active
