@@ -72,7 +72,7 @@ jobs:
         run: |
           docker build \
           -t secure-app \
-          ./app-segura
+          ./DevSecOps/app-segura
 
       - uses: aquasecurity/trivy-action@master
         with:
