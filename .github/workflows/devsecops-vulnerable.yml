@@ -42,7 +42,8 @@ jobs:
           pip install -r DevSecOps/app-vulnerable/requirements.txt
       - name: Ejecutar Safety
         run: |
-          safety check -r DevSecOps/app-vulnerable/requirements.txt | tee safety.txt
+          safety check -r DevSecOps/app-vulnerable/requirements.txt > safety.txt
+          cat safety.txt
       - name: Subir reporte Safety
         if: always()
         uses: actions/upload-artifact@v4
